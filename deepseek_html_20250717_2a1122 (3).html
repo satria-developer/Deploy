@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploy HTML ke Vercel via GitHub</title>
+    <style>
+        :root {
+            --primary: #0070f3;
+            --primary-dark: #005bb5;
+            --error: #d32f2f;
+            --success: #388e3c;
+            --background: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #cccccc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background);
+            color: var(--text);
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0, 112, 243, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            transition-timing-function: linear;
+            border-radius: 5px;
+        }
+
+        @keyframes square {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(-1000px) rotate(600deg);
+            }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 2px dashed var(--border);
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .upload-box.highlight {
+            border-color: var(--primary);
+            background-color: rgba(0, 112, 243, 0.05);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: 500;
+        }
+
+        .file-label:hover {
+            background-color: var(--primary-dark);
+        }
+
+        #fileList {
+            text-align: left;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            min-height: 60px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-weight: 500;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .auth-section {
+            margin: 20px 0;
+        }
+
+        .auth-input {
+            margin-bottom: 15px;
+        }
+
+        .auth-input label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .auth-input input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .domain-section {
+            margin: 30px 0;
+        }
+
+        .domain-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin: 25px 0;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .status-error {
+            background-color: #ffebee;
+            color: var(--error);
+        }
+
+        .status-success {
+            background-color: #e8f5e9;
+            color: var(--success);
+        }
+
+        #result {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e3f2fd;
+            border-radius: 8px;
+        }
+
+        #deployUrl {
+            color: var(--primary);
+            font-weight: bold;
+            text-decoration: none;
+            font-size: 18px;
+            word-break: break-all;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .instructions {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .progress-steps {
+            margin: 20px 0;
+            padding: 0;
+            list-style: none;
+        }
+        
+        .progress-step {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary);
+            background-color: rgba(0, 112, 243, 0.05);
+        }
+        
+        .progress-step.completed {
+            border-left-color: var(--success);
+            background-color: rgba(56, 142, 60, 0.05);
+        }
+        
+        .progress-step.failed {
+            border-left-color: var(--error);
+            background-color: rgba(211, 47, 47, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <ul class="bg-bubbles">
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+            <li></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h1>Deploy File HTML ke Vercel via GitHub</h1>
+        
+        <div class="upload-section">
+            <h2>1. Pilih File HTML Anda</h2>
+            <div class="upload-box" id="dropZone">
+                <label for="fileInput" class="file-label">Pilih File HTML</label>
+                <input type="file" id="fileInput" accept=".html,.htm">
+                <p>Atau drag & drop file HTML ke sini</p>
+            </div>
+            <div id="fileList">Belum ada file dipilih</div>
+        </div>
+        
+        <div class="auth-section">
+            <h2>2. Konfigurasi Deployment</h2>
+            <div class="auth-input">
+                <label for="githubRepo">Nama Repository GitHub</label>
+                <input type="text" id="githubRepo" placeholder="html-deployer" value="html-deployer">
+            </div>
+        </div>
+        
+        <div class="domain-section">
+            <h2>3. Atur Nama Domain</h2>
+            <div class="domain-input">
+                <span>https://</span>
+                <input type="text" id="domainInput" placeholder="nama-website">
+                <span>.vercel.app</span>
+            </div>
+            <p><small>Contoh: nama-website.vercel.app</small></p>
+        </div>
+        
+        <button id="deployBtn" disabled>Deploy Sekarang</button>
+        
+        <div id="status"></div>
+        
+        <ul class="progress-steps" id="progressSteps">
+            <!-- Progress steps will be added here dynamically -->
+        </ul>
+        
+        <div id="result">
+            <h3>🎉 Deploy Berhasil!</h3>
+            <p>Website HTML Anda sekarang online di:</p>
+            <a id="deployUrl" target="_blank" rel="noopener noreferrer"></a>
+            <p id="githubUrl"></p>
+        </div>
+        
+        <div class="instructions">
+            <h3>Catatan Penting:</h3>
+            <ul>
+                <li>Token GitHub harus memiliki izin 'repo' untuk membuat dan mengupdate repository</li>
+                <li>Token Vercel harus memiliki izin untuk membuat deployment</li>
+                <li>Repository GitHub akan dibuat jika belum ada</li>
+                <li>Semua token hanya digunakan untuk proses ini dan tidak disimpan</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Default credentials (hidden from UI)
+            const DEFAULT_CREDENTIALS = {
+                githubToken: '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',
+                githubUsername: 'satria-developer',
+                vercelToken: 'QAKDEDLsUNcQNu43yhVPbjn2',
+                githubRepo: 'html-deployer'
+            };
+
+            // Elements
+            const fileInput = document.getElementById('fileInput');
+            const dropZone = document.getElementById('dropZone');
+            const fileList = document.getElementById('fileList');
+            const githubRepoInput = document.getElementById('githubRepo');
+            const domainInput = document.getElementById('domainInput');
+            const deployBtn = document.getElementById('deployBtn');
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            const deployUrl = document.getElementById('deployUrl');
+            const githubUrl = document.getElementById('githubUrl');
+            const progressSteps = document.getElementById('progressSteps');
+            
+            // API Configuration
+            const GITHUB_API_URL = 'https://api.github.com';
+            const VERCEL_API_URL = 'https://api.vercel.com/v13/deployments';
+            
+            // State
+            let selectedFile = null;
+            
+            // Event Listeners
+            fileInput.addEventListener('change', handleFileSelect);
+            [githubRepoInput, domainInput].forEach(input => {
+                input.addEventListener('input', validateForm);
+            });
+            
+            // Drag and Drop
+            ['dragenter', 'dragover'].forEach(event => {
+                dropZone.addEventListener(event, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(event => {
+                dropZone.addEventListener(event, unhighlight, false);
+            });
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+            
+            // Deploy Button
+            deployBtn.addEventListener('click', deployProject);
+            
+            // Functions
+            function handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    processFile(files[0]);
+                }
+            }
+            
+            function handleDrop(e) {
+                e.preventDefault();
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    processFile(files[0]);
+                    // Create a new DataTransfer object to set files
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                }
+            }
+            
+            function processFile(file) {
+                // Validate file type
+                const validExtensions = ['.html', '.htm'];
+                const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                
+                if (!validExtensions.includes(fileExt)) {
+                    showStatus('Error: Hanya file HTML (.html/.htm) yang diperbolehkan', 'error');
+                    resetFileSelection();
+                    return;
+                }
+                
+                selectedFile = file;
+                
+                // Display file info
+                fileList.innerHTML = `
+                    <div class="file-item">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
+                    </div>
+                `;
+                
+                validateForm();
+                showStatus('File siap untuk di-deploy', 'success');
+            }
+            
+            function resetFileSelection() {
+                selectedFile = null;
+                fileInput.value = '';
+                fileList.innerHTML = 'Belum ada file dipilih';
+                deployBtn.disabled = true;
+            }
+            
+            function validateForm() {
+                const fileValid = selectedFile !== null;
+                const repoValid = githubRepoInput.value.trim() !== '';
+                const domainValid = domainInput.value.trim() !== '';
+                
+                deployBtn.disabled = !(fileValid && repoValid && domainValid);
+            }
+            
+            async function deployProject() {
+                if (!selectedFile) {
+                    showStatus('Error: Silakan pilih file HTML terlebih dahulu', 'error');
+                    return;
+                }
+                
+                const githubToken = DEFAULT_CREDENTIALS.githubToken;
+                const githubUsername = DEFAULT_CREDENTIALS.githubUsername;
+                const githubRepo = githubRepoInput.value.trim() || DEFAULT_CREDENTIALS.githubRepo;
+                const vercelToken = DEFAULT_CREDENTIALS.vercelToken;
+                const domain = domainInput.value.trim();
+                
+                if (!domain) {
+                    showStatus('Error: Silakan masukkan nama domain', 'error');
+                    return;
+                }
+                
+                deployBtn.disabled = true;
+                showStatus('Memulai proses deployment...', '');
+                
+                // Clear previous progress steps
+                progressSteps.innerHTML = '';
+                
+                try {
+                    // Step 1: Upload to GitHub
+                    addProgressStep('Mengupload file ke GitHub...');
+                    const githubFileUrl = await uploadToGitHub(selectedFile, githubToken, githubUsername, githubRepo);
+                    completeProgressStep('File berhasil diupload ke GitHub');
+                    
+                    // Step 2: Deploy to Vercel
+                    addProgressStep('Mendeploy ke Vercel...');
+                    const vercelUrl = await deployToVercel(githubFileUrl, domain, vercelToken, githubUsername, githubRepo);
+                    completeProgressStep('Deploy ke Vercel berhasil');
+                    
+                    // Show success result
+                    const finalUrl = `https://${domain}.vercel.app`;
+                    deployUrl.href = finalUrl;
+                    deployUrl.textContent = finalUrl;
+                    githubUrl.innerHTML = `File GitHub: <a href="${githubFileUrl}" target="_blank">${githubFileUrl}</a>`;
+                    resultDiv.style.display = 'block';
+                    showStatus('Deploy berhasil!', 'success');
+                } catch (error) {
+                    console.error('Deployment error:', error);
+                    showStatus(`Error: ${error.message}`, 'error');
+                    failProgressStep(error.message);
+                } finally {
+                    deployBtn.disabled = false;
+                }
+            }
+            
+            async function uploadToGitHub(file, token, username, repo) {
+                try {
+                    // Read file content
+                    const content = await readFileAsBase64(file);
+                    
+                    // First, check if repo exists
+                    let repoExists = true;
+                    try {
+                        await fetch(`${GITHUB_API_URL}/repos/${username}/${repo}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        });
+                    } catch (e) {
+                        repoExists = false;
+                    }
+                    
+                    // If repo doesn't exist, create it
+                    if (!repoExists) {
+                        addProgressStep('Membuat repository GitHub baru...');
+                        const createResponse = await fetch(`${GITHUB_API_URL}/user/repos`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: repo,
+                                private: false,
+                                auto_init: false
+                            })
+                        });
+                        
+                        if (!createResponse.ok) {
+                            const errorData = await createResponse.json();
+                            throw new Error(errorData.message || 'Gagal membuat repository GitHub');
+                        }
+                        
+                        completeProgressStep('Repository GitHub berhasil dibuat');
+                    }
+                    
+                    // GitHub API request to create or update file
+                    const path = file.name;
+                    const message = `Add ${file.name}`;
+                    const response = await fetch(`${GITHUB_API_URL}/repos/${username}/${repo}/contents/${path}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            content: content,
+                            branch: 'main'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Gagal mengupload ke GitHub');
+                    }
+                    
+                    return data.content.html_url;
+                } catch (error) {
+                    console.error('GitHub upload error:', error);
+                    throw new Error(`GitHub upload failed: ${error.message}`);
+                }
+            }
+            
+            async function deployToVercel(githubFileUrl, domain, token, username, repo) {
+                try {
+                    // Create deployment configuration
+                    const deploymentConfig = {
+                        name: domain,
+                        gitSource: {
+                            type: 'github',
+                            repo: `${username}/${repo}`,
+                            ref: 'main'
+                        }
+                    };
+                    
+                    // Deploy to Vercel
+                    const response = await fetch(VERCEL_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(deploymentConfig)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error?.message || 'Gagal mendeploy ke Vercel');
+                    }
+                    
+                    return `https://${domain}.vercel.app`;
+                } catch (error) {
+                    console.error('Vercel deployment error:', error);
+                    throw new Error(`Vercel deployment failed: ${error.message}`);
+                }
+            }
+            
+            function readFileAsBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        const base64String = event.target.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            function addProgressStep(message) {
+                const step = document.createElement('li');
+                step.className = 'progress-step';
+                step.textContent = message;
+                progressSteps.appendChild(step);
+            }
+            
+            function completeProgressStep(message) {
+                const steps = progressSteps.querySelectorAll('.progress-step');
+                const lastStep = steps[steps.length - 1];
+                if (lastStep) {
+                    lastStep.textContent = message;
+                    lastStep.classList.add('completed');
+                }
+            }
+            
+            function failProgressStep(message) {
+                const steps = progressSteps.querySelectorAll('.progress-step');
+                const lastStep = steps[steps.length - 1];
+                if (lastStep) {
+                    lastStep.textContent = message;
+                    lastStep.classList.add('failed');
+                }
+            }
+            
+            function highlight(e) {
+                e.preventDefault();
+                dropZone.classList.add('highlight');
+            }
+            
+            function unhighlight(e) {
+                e.preventDefault();
+                dropZone.classList.remove('highlight');
+            }
+            
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            function showStatus(message, type) {
+                statusDiv.textContent = message;
+                statusDiv.className = type ? `status-${type}` : '';
+            }
+        });
+    </script>
+</body>
+</html>
